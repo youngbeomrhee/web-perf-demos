@@ -1,0 +1,25 @@
+{
+  "name": "inp-demo",
+  "description": "Interaction to Next Paint (INP) ⚡ Live Demo",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/GoogleChromeLabs/web-perf-demos.git"
+  },
+  "private": true,
+  "type": "module",
+  "author": {
+    "name": "Philip Walton",
+    "url": "https://philipwalton.com"
+  },
+  "bugs": {
+    "url": "https://github.com/GoogleChromeLabs/web-perf-demos/issues"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "http-server public -p 4000",
+    "deploy": "gsutil -m rsync -rd public gs://chrome-dev-demos/public/inp-demo"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}
