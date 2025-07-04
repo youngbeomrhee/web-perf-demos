@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy": "gcloud functions deploy bfcache_not_store --runtime nodejs20 --trigger-http -no-gen2",
+    "deploy": "gcloud functions deploy bfcache_no_store --gen2 --runtime nodejs22 --trigger-http --region us-central1 --entry-point bfcache_no_store_function_name --source . --allow-unauthenticated",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
