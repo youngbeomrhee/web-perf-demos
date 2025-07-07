@@ -9,8 +9,4 @@
     "url": "https://github.com/GoogleChromeLabs/web-perf-demos/learn-performance-demos/learn-performance-exif-worker"
   },
   "license": "Apache-2.0",
-  "keywords": [
-    "node",
-    "express"
-  ]
 }
