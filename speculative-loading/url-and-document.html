@@ -98,7 +98,7 @@
     <hr />
 
     <p>
-      <a href="https://github.com/GoogleChromeLabs/web-perf-demos/tree/main/speculative-rules">View the code</a>
+      <a href="https://github.com/GoogleChromeLabs/web-perf-demos/tree/main/speculative-loading">View the code</a>
     </p>
 
     <script>
@@ -131,6 +131,9 @@
               { "not": {"href_matches": "/recipes/*"}}
             ]},
             "eagerness": "moderate"
+          },{
+            "urls": ["apple.html","banana.html","cherry.html","coconut.html","grape.html",
+            "kiwi.html","mango.html","melon.html","orange.html","peach.html","pineapple.html"]
           }]
         }`;
         document.body.appendChild(specScript);
