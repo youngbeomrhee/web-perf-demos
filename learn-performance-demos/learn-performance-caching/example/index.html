@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTTP 캐싱 테스트</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin: 15px 0;
+      padding: 15px;
+    }
+    .test-section h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .update-btn {
+      background: #28a745;
+    }
+    .update-btn:hover {
+      background: #1e7e34;
+    }
+    .result {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .status-200 { border-left: 4px solid #28a745; }
+    .status-304 { border-left: 4px solid #ffc107; }
+    .status-error { border-left: 4px solid #dc3545; }
+    .explanation {
+      background: #e7f3ff;
+      border-left: 4px solid #007bff;
+      padding: 10px;
+      margin: 10px 0;
+      font-style: italic;
+    }
+    .cache-info {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    input[type="text"] {
+      width: 200px;
+      padding: 8px;
+      margin: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 HTTP 캐싱 동작 테스트</h1>
+    <p>각 버튼을 여러 번 클릭하여 캐시 동작을 확인하세요. 개발자 도구의 Network 탭도 함께 확인하면 더 자세한 정보를 볼 수 있습니다.</p>
+    
+    <div class="cache-info">
+      <strong>💡 테스트 팁:</strong>
+      <ul>
+        <li>ETag/Last-Modified 테스트는 첫 요청 후 두 번째부터 304 응답이 옵니다</li>
+        <li>max-age 테스트는 30초 내에는 네트워크 요청 없이 캐시에서 응답합니다</li>
+        <li>데이터 업데이트 후 ETag/Last-Modified를 다시 테스트해보세요</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>데이터 관리</h2>
+    <div class="test-section">
+      <h3>📝 데이터 업데이트</h3>
+      <input type="text" id="updateContent" placeholder="새로운 내용 입력">
+      <button class="update-btn" onclick="updateData()">데이터 업데이트</button>
+      <button onclick="getStatus()">현재 상태 확인</button>
+      <div id="statusResult" class="result" style="display: none;"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>캐시 테스트</h2>
+    
+    <div class="test-section">
+      <h3>🚫 no-store 테스트</h3>
+      <div class="explanation">
+        Cache-Control: no-store - 브라우저가 응답을 캐시하지 않습니다. 매번 서버에서 새로운 데이터를 받습니다.
+      </div>
+      <button onclick="testNoStore()">no-store 요청</button>
+      <div id="noStoreResult" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🏷️ ETag 테스트</h3>
+      <div class="explanation">
+        ETag 기반 조건부 요청 - 첫 요청에서 ETag를 받고, 이후 요청에서 If-None-Match 헤더로 보냅니다. 데이터가 변경되지 않았으면 304 응답을 받습니다.
+      </div>
+      <button onclick="testETag()">ETag 요청</button>
+      <button onclick="resetETag()">ETag 초기화</button>
+      <div id="etagResult" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📅 Last-Modified 테스트</h3>
+      <div class="explanation">
+        Last-Modified 기반 조건부 요청 - 첫 요청에서 Last-Modified를 받고, 이후 요청에서 If-Modified-Since 헤더로 보냅니다. 수정 시간이 같으면 304 응답을 받습니다.
+      </div>
+      <button onclick="testLastModified()">Last-Modified 요청</button>
+      <button onclick="resetLastModified()">Last-Modified 초기화</button>
+      <div id="lastModifiedResult" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>⏰ max-age 테스트</h3>
+      <div class="explanation">
+        Cache-Control: max-age=30 - 30초 동안 브라우저 캐시에서 직접 응답합니다. 네트워크 요청이 발생하지 않습니다.
+      </div>
+      <button onclick="testMaxAge()">max-age 요청</button>
+      <div id="maxAgeResult" class="result" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    // 캐시된 값들
+    let cachedETag = null;
+    let cachedLastModified = null;
+    let cachedETagData = null;
+    let cachedLastModifiedData = null;
+
+    // 공통 응답 처리 함수
+    async function handleResponse(url, options = {}, resultId, useCache = false) {
+      const startTime = performance.now();
+      
+      try {
+        const response = await fetch(url, options);
+        const endTime = performance.now();
+        const responseTime = Math.round(endTime - startTime);
+        
+        // 헤더 수집
+        const headers = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+
+        let data = null;
+        let bodyText = '';
+        
+        if (response.status === 304) {
+          bodyText = '(304 Not Modified - 캐시된 데이터 사용)';
+          if (useCache === 'etag' && cachedETagData) {
+            data = cachedETagData;
+          } else if (useCache === 'lastmodified' && cachedLastModifiedData) {
+            data = cachedLastModifiedData;
+          }
+        } else {
+          try {
+            data = await response.json();
+            bodyText = JSON.stringify(data, null, 2);
+          } catch (e) {
+            bodyText = '(응답 본문을 읽을 수 없음)';
+          }
+        }
+
+        // 결과 표시
+        const resultDiv = document.getElementById(resultId);
+        const statusClass = response.status === 200 ? 'status-200' : 
+                          response.status === 304 ? 'status-304' : 'status-error';
+        
+        resultDiv.className = `result ${statusClass}`;
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = 
+          `Status: ${response.status} ${response.statusText}\n` +
+          `Response Time: ${responseTime}ms\n` +
+          `Headers:\n${JSON.stringify(headers, null, 2)}\n\n` +
+          `Body:\n${bodyText}`;
+
+        return { response, data, headers };
+      } catch (error) {
+        const resultDiv = document.getElementById(resultId);
+        resultDiv.className = 'result status-error';
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = `Error: ${error.message}`;
+        throw error;
+      }
+    }
+
+    // no-store 테스트
+    async function testNoStore() {
+      await handleResponse('/api/no-store', {}, 'noStoreResult');
+    }
+
+    // ETag 테스트
+    async function testETag() {
+      const headers = {};
+      if (cachedETag) {
+        headers['If-None-Match'] = cachedETag;
+      }
+
+      const result = await handleResponse('/api/etag', { headers }, 'etagResult', 'etag');
+      
+      // ETag 저장
+      if (result.headers.etag) {
+        cachedETag = result.headers.etag;
+        if (result.data) {
+          cachedETagData = result.data;
+        }
+      }
+    }
+
+    // Last-Modified 테스트
+    async function testLastModified() {
+      const headers = {};
+      if (cachedLastModified) {
+        headers['If-Modified-Since'] = cachedLastModified;
+      }
+
+      const result = await handleResponse('/api/last-modified', { headers }, 'lastModifiedResult', 'lastmodified');
+      
+      // Last-Modified 저장
+      if (result.headers['last-modified']) {
+        cachedLastModified = result.headers['last-modified'];
+        if (result.data) {
+          cachedLastModifiedData = result.data;
+        }
+      }
+    }
+
+    // max-age 테스트
+    async function testMaxAge() {
+      await handleResponse('/api/max-age', {}, 'maxAgeResult');
+    }
+
+    // 데이터 업데이트
+    async function updateData() {
+      const content = document.getElementById('updateContent').value;
+      
+      try {
+        const response = await fetch('/api/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content })
+        });
+        
+        const data = await response.json();
+        alert(`데이터가 업데이트되었습니다! 버전: ${data.newData.version}`);
+        
+        // 캐시 초기화
+        resetETag();
+        resetLastModified();
+        
+        document.getElementById('updateContent').value = '';
+      } catch (error) {
+        alert(`업데이트 실패: ${error.message}`);
+      }
+    }
+
+    // 현재 상태 확인
+    async function getStatus() {
+      await handleResponse('/api/status', {}, 'statusResult');
+    }
+
+    // ETag 캐시 초기화
+    function resetETag() {
+      cachedETag = null;
+      cachedETagData = null;
+      console.log('ETag 캐시 초기화됨');
+    }
+
+    // Last-Modified 캐시 초기화
+    function resetLastModified() {
+      cachedLastModified = null;
+      cachedLastModifiedData = null;
+      console.log('Last-Modified 캐시 초기화됨');
+    }
+
+    // 페이지 로드 시 현재 상태 확인
+    window.addEventListener('load', () => {
+      console.log('🚀 HTTP 캐싱 테스트 페이지가 로드되었습니다.');
+      console.log('개발자 도구의 Network 탭을 열어서 요청/응답을 확인하세요.');
+    });
+  </script>
+</body>
+</html> 
